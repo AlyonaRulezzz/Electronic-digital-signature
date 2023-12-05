@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "MainActivity1"
 
     private lateinit var binding: ActivityMainBinding
-    private var signturePath = ""
     private var signtureFileName = "noDocument_signature"
     private var filePath = ""
     private lateinit var privateKey: PrivateKey
@@ -47,12 +46,17 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.btnFilePicker.setOnClickListener {
-            CoroutineScope(Dispatchers.Main).launch {
-                val firstResult: Deferred<String> = async { showFileChooser() }
-                delay(10_000)
-                // Запускаем вторую функцию только после завершения первой
-                val secondResult = afterShowFileChooser(firstResult.await())
-            }
+//            CoroutineScope(Dispatchers.Main).launch {
+//                val firstResult: Deferred<String> = async { showFileChooser() }
+//                delay(10_000)
+//                // Запускаем вторую функцию только после завершения первой
+//                val secondResult = afterShowFileChooser(firstResult.await())
+//            }
+            showFileChooser()
+        }
+
+        binding.btnSign.setOnClickListener {
+            afterShowFileChooser()
         }
 
 //
@@ -81,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 
         }
 //
-    private fun afterShowFileChooser(await: String) {
+    private fun afterShowFileChooser() {
         // Создаем подпись
         val signature = createSignature(filePath, privateKey)
         println("signature1 = ${signature.contentToString()}")
