@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity() {
         // Проверяем подпись
         //            val isSignatureValid = verifySignature("путь_к_файлу_для_подписи.txt", publicKey, signature)
         //            val isSignatureValid = verifySignature(publicKey, ???"signature.txt")
-        val isSignatureValid = verifySignature(publicKey, signature)
+        val isSignatureValid = verifySignature(filePath, publicKey, signature)
         if (isSignatureValid) {
             println("Подпись верна.")
         } else {
@@ -167,13 +167,14 @@ class MainActivity : AppCompatActivity() {
             return signature.sign()
         }
 //
-//        fun verifySignature(filePath: String, publicKey: PublicKey, signature: ByteArray): Boolean {
-        fun verifySignature(publicKey: PublicKey, signature: ByteArray): Boolean {
+        fun verifySignature(filePath: String, publicKey: PublicKey, signature: ByteArray): Boolean {
+//        fun verifySignature(publicKey: PublicKey, signature: ByteArray): Boolean {
             val verifier = Signature.getInstance("SHA256withRSA", "BC")
             verifier.initVerify(publicKey)
 
 //            val fileBytes = Files.readAllBytes(Paths.get(filePath))
-            val fileBytes = "Paths.get(filePath)".toByteArray()
+//            val fileBytes = "Paths.get(filePath)".toByteArray()
+            val fileBytes = File(filePath).hashCode().toString().toByteArray()
             verifier.update(fileBytes)
 
             return verifier.verify(signature)
