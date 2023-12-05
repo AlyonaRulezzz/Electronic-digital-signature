@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doOnTextChanged
 import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -32,10 +33,12 @@ import java.security.Signature
 class MainActivity : AppCompatActivity() {
 
     private val TAG = "MainActivity1"
+    private val PASSWORD = "1"
 
     private lateinit var binding: ActivityMainBinding
     private var signtureFileName = "noDocument_signature"
     private var filePath = ""
+    private var isSigningError = false
     private lateinit var privateKey: PrivateKey
     private lateinit var publicKey: PublicKey
 
@@ -46,17 +49,31 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.btnFilePicker.setOnClickListener {
-//            CoroutineScope(Dispatchers.Main).launch {
-//                val firstResult: Deferred<String> = async { showFileChooser() }
-//                delay(10_000)
-//                // Запускаем вторую функцию только после завершения первой
-//                val secondResult = afterShowFileChooser(firstResult.await())
-//            }
+            filePath = ""
+            isSigningError = false
+            binding.tvFileInfo.text = ""
+            binding.etPassword.setText("")
+            binding.tvSignStatus.text = ""
             showFileChooser()
         }
 
         binding.btnSign.setOnClickListener {
-            afterShowFileChooser()
+            if ( (filePath != "") && (binding.etPassword.text.toString() == PASSWORD) ) {
+                isSigningError = false
+                afterShowFileChooser()
+            } else {
+                isSigningError = true
+            }
+
+            if (isSigningError) {
+                binding.tvSignStatus.text = "Ошибка подписания документа"
+            } else {
+                binding.tvSignStatus.text = "Подписание документа завершено успешно"
+            }
+        }
+
+        binding.etPassword.doOnTextChanged { text, start, before, count ->
+            isSigningError = text != PASSWORD
         }
 
 //
@@ -138,6 +155,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 println("Ошибка  кодирования хэш-кода: ${e.message}")
                 Toast.makeText(this, "Ошибка кодирования хэш-кода", Toast.LENGTH_SHORT).show()
+                isSigningError = true
             }
 
             return signature.sign()
