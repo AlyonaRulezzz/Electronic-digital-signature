@@ -1,8 +1,13 @@
 package com.example.test_electronical_digit_signature
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -18,10 +23,17 @@ class MainActivity : AppCompatActivity() {
 
     private val TAG = "MainActivity1"
 
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+        setContentView(view)
 
+        binding.btnFilePicker.setOnClickListener { showFileChooser() }
+
+//
         val provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME)
         // Android registers its own BC provider. As it might be outdated and might not include
         // all needed ciphers, we substitute it with a known BC bundled in the app.
@@ -90,7 +102,29 @@ class MainActivity : AppCompatActivity() {
                 println("Подпись не верна.")
             }
         }
-//
+
+    private fun showFileChooser() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "*/*"
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Select a file"), 100)
+        } catch (exception: Exception) {
+            Toast.makeText(this, "Please install a file manager", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
+            val uri: Uri? = data.data
+            val path: String = uri?.path.toString()
+            val file = File(path)
+            binding.tvFileInfo.text = "fileName = ${file.name}, path = $path".trimIndent()
+        }
+    }
+
+    //
 //        private fun createSignature(filePath: String, privateKey: PrivateKey): ByteArray {
         private fun createSignature(privateKey: PrivateKey): ByteArray {
             val signature = Signature.getInstance("SHA256withRSA", "BC")

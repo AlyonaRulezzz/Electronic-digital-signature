@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Test_Electronical_Digit_Signature</string>
+    <string name="pick_a_file">pick a file</string>
 </resources>
