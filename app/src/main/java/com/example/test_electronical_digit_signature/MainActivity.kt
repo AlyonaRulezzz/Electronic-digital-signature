@@ -68,7 +68,8 @@ class MainActivity : AppCompatActivity() {
         if (checkSelfPermission(READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                 arrayOf(READ_EXTERNAL_STORAGE),
-                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
+                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE
+            )
         }
 
         binding.btnFilePicker.setOnClickListener {
@@ -114,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
     //
     private fun afterShowFileChooser() {
-        privateKey?.let{
+        privateKey?.let {
             publicKey?.let {
                 val signature = createSignature(filePath, privateKey!!)
                 createFile(this@MainActivity, signtureFileName, signature)
@@ -151,7 +152,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun searchPrivateKey(){
+    private fun searchPrivateKey() {
         CoroutineScope(Dispatchers.IO).launch {
             val directoryPath = Environment.getExternalStorageDirectory().path
             val directory = File(directoryPath)
@@ -165,7 +166,8 @@ class MainActivity : AppCompatActivity() {
                 privateKey = getPrivateKeyFromPEMFile(pemFilePath)
             } else {
                 withContext(Dispatchers.Main) {
-                    binding.tvPrivateKeyStatus.text = this@MainActivity.getString(R.string.no_pivate_key)
+                    binding.tvPrivateKeyStatus.text =
+                        this@MainActivity.getString(R.string.no_pivate_key)
                 }
             }
         }
@@ -217,36 +219,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-        private fun createSignature(filePath: String, privateKey: PrivateKey): ByteArray {
-            val signature = Signature.getInstance("SHA256withRSA", "BC")
-            CoroutineScope(Dispatchers.IO).launch {
-                signature.initSign(privateKey)
-                try {
-                    val hashByteArray = File(filePath).hashCode().toString().toByteArray()
-                    signature.update(hashByteArray)
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, getString(R.string.hashcode_error),
-                            Toast.LENGTH_SHORT).show()
-                    }
-                    isSigningError = true
-                }
-            }
-            return signature.sign()
+    private fun createSignature(filePath: String, privateKey: PrivateKey): ByteArray {
+        val signature = Signature.getInstance("SHA256withRSA", "BC")
+        signature.initSign(privateKey)
+        try {
+            val hashByteArray = File(filePath).hashCode().toString().toByteArray()
+            signature.update(hashByteArray)
+        } catch (e: Exception) {
+            Toast.makeText(
+                this@MainActivity, getString(R.string.hashcode_error),
+                Toast.LENGTH_SHORT
+            ).show()
+            isSigningError = true
         }
-//
-        private fun verifySignature(filePath: String, publicKey: PublicKey, signature: ByteArray): Boolean {
-            val verifier = Signature.getInstance("SHA256withRSA", "BC")
-            verifier.initVerify(publicKey)
+        return signature.sign()
+    }
 
-            val fileBytes = File(filePath).hashCode().toString().toByteArray()
-            verifier.update(fileBytes)
+    //
+    private fun verifySignature(
+        filePath: String,
+        publicKey: PublicKey,
+        signature: ByteArray
+    ): Boolean {
+        val verifier = Signature.getInstance("SHA256withRSA", "BC")
+        verifier.initVerify(publicKey)
 
-            return verifier.verify(signature)
-        }
+        val fileBytes = File(filePath).hashCode().toString().toByteArray()
+        verifier.update(fileBytes)
+
+        return verifier.verify(signature)
+    }
 
     private fun verifyKeys(string: String, publicKey: PublicKey): Boolean {
-         privateKey?.let{
+        privateKey?.let {
             val signature = Signature.getInstance("SHA256withRSA", "BC")
             signature.initSign(privateKey)
             val stringBytes = string.toByteArray()
@@ -263,8 +268,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun createFile(context: Context, fileName: String, signature: ByteArray) {
         val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "${signtureFileName.substringBeforeLast('.')}.sig")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            put(
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                "${signtureFileName.substringBeforeLast('.')}.sig"
+            )
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
         }
 
         val resolver = context.contentResolver
@@ -283,7 +291,8 @@ class MainActivity : AppCompatActivity() {
             val certHolder = pemReader.readPemObject() as X509CertificateObject
 
             val certFactory = CertificateFactory.getInstance("X.509")
-            val x509Certificate = certFactory.generateCertificate(certHolder.encoded.inputStream()) as X509Certificate
+            val x509Certificate =
+                certFactory.generateCertificate(certHolder.encoded.inputStream()) as X509Certificate
 
             x509Certificate.publicKey
         } catch (e: Exception) {
@@ -330,7 +339,11 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
