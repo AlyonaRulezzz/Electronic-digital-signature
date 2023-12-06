@@ -4,4 +4,6 @@
     <string name="btn_pick_a_file">Выберите документ</string>
     <string name="et_password_hint">Введите пароль</string>
     <string name="btn_sign">Подписать</string>
+    <string name="no_public_key">"Отсутствует публичный ключ ЭЦП. Убедитесь, что он установлен на вашем устройстве и соответствует закрытому ключу ЭЦП."</string>
+    <string name="no_pivate_key">"Отсутствует закрытый ключ ЭЦП. Убедитесь, что он установлен на вашем устройстве."</string>
 </resources>

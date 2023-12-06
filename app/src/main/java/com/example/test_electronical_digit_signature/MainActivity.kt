@@ -53,11 +53,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.btnFilePicker.setOnClickListener {
-            filePath = ""
-            isSigningError = false
-            binding.tvFileInfo.text = ""
-            binding.etPassword.setText("")
-            binding.tvSignStatus.text = ""
+            initViews()
             showFileChooser()
         }
 
@@ -98,7 +94,16 @@ class MainActivity : AppCompatActivity() {
                 PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
         }
     }
-//
+
+    private fun initViews() {
+        filePath = ""
+        isSigningError = false
+        binding.tvFileInfo.text = ""
+        binding.etPassword.setText("")
+        binding.tvSignStatus.text = ""
+    }
+
+    //
     private fun afterShowFileChooser() {
         // Создаем подпись
         privateKey?.let{
@@ -107,74 +112,17 @@ class MainActivity : AppCompatActivity() {
                 println("signature1 = ${signature.contentToString()}")
                 // Сохраняем подпись в файл
                 createFile(this@MainActivity, signtureFileName, signature)
-
-                // Проверяем подпись
-                val isSignatureValid = verifySignature(filePath, publicKey!!, signature)
-                if (isSignatureValid) {
-                    println("Подпись верна.")
-                } else {
-                    println("Подпись не верна.")
-                }
             }
-
         }
     }
 
     private fun showFileChooser(): String {
         binding.tvPublicKeyStatus.text = ""
         binding.tvPrivateKeyStatus.text = ""
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
-            } else {
-                println("Разрешение на доступ к внешнему хранилищу отсутствует")
-            }
-        } else {
-            println("Доступа к внешнему хранилищу нет")
-        }
-        // Путь к корневой директории, где вы хотите начать поиск публичного ключа
-        val directoryPath = Environment.getExternalStorageDirectory().path
-        var extensionToFind = "cer"
-        val directory = File(directoryPath)
-        val cerFiles = findFilesByExtension(directory, extensionToFind)
-        if (cerFiles.isNotEmpty()) {
-            println("Найденные файлы с расширением $extensionToFind:")
-            for (cerFile in cerFiles) {
-                println(cerFile.absolutePath)
-            }
-            val certificateFilePath = cerFiles[0].absolutePath
-            publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
-            println("Открытый ключ: $publicKey")
-        } else {
-            println("Файлы с расширением $extensionToFind не найдены.")
-            println("Не удалось извлечь открытый ключ.")
-            binding.tvPublicKeyStatus.text = buildString {
-                append("Отсутствует публичный ключ ЭЦП. Убедитесь, что он установлен ")
-                append("на вашем устройстве и соответствует закрытому ключу ЭЦП.")
-            }
-        }
-            // Поиск приватного ключа
-            extensionToFind = "pem"
-            val pemFiles = findFilesByExtension(directory, extensionToFind)
-            val pemFilePath = "путь_к_вашему_файлу.pem"
-            privateKey = getPrivateKeyFromPEMFile(pemFilePath)
-            if (pemFiles.isNotEmpty()) {
-                println("Найденные файлы с расширением $extensionToFind:")
-                for (pemFile in pemFiles) {
-                    println(pemFile.absolutePath)
-                }
-                val pemFilePath = pemFiles[0].absolutePath
-                privateKey = getPrivateKeyFromPEMFile(pemFilePath)
-                println("Закрытый ключ: $privateKey")
-            } else {
-                println("Файлы с расширением $extensionToFind не найдены.")
-                println("Не удалось извлечь закрытый ключ.")
-                binding.tvPrivateKeyStatus.text = buildString {
-                    append("Отсутствует закрытый ключ ЭЦП.")
-                    append(" Убедитесь, что он установлен на вашем устройстве.")
-                }
-            }
-//
+
+        searchPrivateKey()
+        searchPublicKey()
+
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
         intent.addCategory(Intent.CATEGORY_OPENABLE)
@@ -186,6 +134,57 @@ class MainActivity : AppCompatActivity() {
         return filePath
     }
 
+    private fun searchPrivateKey(){
+        // Поиск приватного ключа
+        val directoryPath = Environment.getExternalStorageDirectory().path
+        val directory = File(directoryPath)
+        val extensionToFind = "pem"
+        val pemFiles = findFilesByExtension(directory, extensionToFind)
+        if (pemFiles.isNotEmpty()) {
+            println("Найденные файлы с расширением $extensionToFind:")
+            for (pemFile in pemFiles) {
+                println(pemFile.absolutePath)
+            }
+            val pemFilePath = pemFiles[0].absolutePath
+            privateKey = getPrivateKeyFromPEMFile(pemFilePath)
+            println("Закрытый ключ: $privateKey")
+        } else {
+            println("Файлы с расширением $extensionToFind не найдены.")
+            println("Не удалось извлечь закрытый ключ.")
+            binding.tvPrivateKeyStatus.text = this.getString(R.string.no_pivate_key)
+        }
+    }
+
+    private fun searchPublicKey() {
+        // Путь к корневой директории, где вы хотите начать поиск публичного ключа
+        val directoryPath = Environment.getExternalStorageDirectory().path
+        val extensionToFind = "cer"
+        val directory = File(directoryPath)
+        val cerFiles = findFilesByExtension(directory, extensionToFind)
+        if (cerFiles.isNotEmpty()) {
+            println("Найденные файлы с расширением $extensionToFind:")
+            for (cerFile in cerFiles) {
+                println(cerFile.absolutePath)
+            }
+            val certificateFilePath = cerFiles[0].absolutePath
+            publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
+            // Проверяем ключи
+            val isSignatureValid = publicKey?.let { verifyKeys("Hello world!", it) }
+            if (isSignatureValid == true) {
+                println("Подпись верна.")
+                println("Открытый ключ: $publicKey")
+            } else {
+                println("Подпись не верна.")
+                println("Не удалось извлечь открытый ключ.")
+                binding.tvPublicKeyStatus.text = this.getText(R.string.no_public_key)
+            }
+        } else {
+            println("Файлы с расширением $extensionToFind не найдены.")
+            println("Не удалось извлечь открытый ключ.")
+            binding.tvPublicKeyStatus.text = this.getText(R.string.no_public_key)
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
@@ -194,11 +193,10 @@ class MainActivity : AppCompatActivity() {
             filePath = path
             val file = File(path)
             signtureFileName = file.name
-            binding.tvFileInfo.text = "fileName = ${file.name}, path = $path".trimIndent()
+            binding.tvFileInfo.text = "Документ = ${file.name}, путь = $path".trimIndent()
         }
     }
 
-    //
         private fun createSignature(filePath: String, privateKey: PrivateKey): ByteArray {
             val signature = Signature.getInstance("SHA256withRSA", "BC")
             signature.initSign(privateKey)
@@ -218,7 +216,7 @@ class MainActivity : AppCompatActivity() {
             return signature.sign()
         }
 //
-        fun verifySignature(filePath: String, publicKey: PublicKey, signature: ByteArray): Boolean {
+        private fun verifySignature(filePath: String, publicKey: PublicKey, signature: ByteArray): Boolean {
             val verifier = Signature.getInstance("SHA256withRSA", "BC")
             verifier.initVerify(publicKey)
 
@@ -227,6 +225,22 @@ class MainActivity : AppCompatActivity() {
 
             return verifier.verify(signature)
         }
+
+    private fun verifyKeys(string: String, publicKey: PublicKey): Boolean {
+         privateKey?.let{
+            val signature = Signature.getInstance("SHA256withRSA", "BC")
+            signature.initSign(privateKey)
+            val stringBytes = string.toByteArray()
+            signature.update(stringBytes)
+            signature.sign()
+
+            val verifier = Signature.getInstance("SHA256withRSA", "BC")
+            verifier.initVerify(publicKey)
+            verifier.update(stringBytes)
+            return verifier.verify(signature.sign())
+        }
+        return false
+    }
 
     private fun createFile(context: Context, fileName: String, signature: ByteArray) {
         val contentValues = ContentValues().apply {
