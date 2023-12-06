@@ -13,6 +13,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.widget.doOnTextChanged
 import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -20,6 +21,7 @@ import org.bouncycastle.jce.provider.X509CertificateObject
 import org.bouncycastle.util.io.pem.PemReader
 import java.io.File
 import java.io.FileReader
+import java.nio.file.Files
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -226,6 +228,66 @@ class MainActivity : AppCompatActivity() {
         } else {
             println("Файлы с расширением $extensionToFind не найдены.")
         }
+        //
+        val result = mutableListOf<File>()
+
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns.DATA,
+            MediaStore.Files.FileColumns.MIME_TYPE
+        )
+
+        val uri = MediaStore.Files.getContentUri("external")
+
+        val cursor = contentResolver.query(
+            uri,
+            projection,
+            null,
+            null,
+            null
+        )
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                val path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
+                val mimeType = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
+                val file = File(path)
+
+                // Добавляем все файлы без проверки расширения
+                result.add(file)
+                if (file.name.contains(".sig"))
+                    println(file.name)
+            }
+            cursor.close()
+        }
+//        return result
+        //
+//        val projection = arrayOf(
+//            MediaStore.Files.FileColumns.DATA,
+//            MediaStore.Files.FileColumns.MIME_TYPE
+//        )
+//
+//        val uri = MediaStore.Files.getContentUri("external")
+//
+//        val cursor = contentResolver.query(
+//            uri,
+//            projection,
+//            null,
+//            null,
+//            null
+//        )
+//
+//        if (cursor != null) {
+//            while (cursor.moveToNext()) {
+//                val path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
+//                if (path.contains(".mp3")) {
+//                    println("Found file: $path")
+//                } else {
+//                    println("Not found in $path")
+//                }
+//            }
+//            cursor.close()
+//        }
+
         //
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
