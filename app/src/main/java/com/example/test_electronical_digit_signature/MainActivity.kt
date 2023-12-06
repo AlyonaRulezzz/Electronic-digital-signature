@@ -17,7 +17,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
+import androidx.lifecycle.lifecycleScope
 import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.provider.X509CertificateObject
 import org.bouncycastle.util.io.pem.PemReader
@@ -137,46 +142,60 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun generateKeys() {
-        val keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC")
-        keyPairGenerator.initialize(2048)
-        val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
-        privateKey = keyPair.private
-        publicKey = keyPair.public
+        CoroutineScope(Dispatchers.IO).launch {
+            val keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC")
+            keyPairGenerator.initialize(2048)
+            val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
+            privateKey = keyPair.private
+            publicKey = keyPair.public
+        }
     }
 
     private fun searchPrivateKey(){
-        val directoryPath = Environment.getExternalStorageDirectory().path
-        val directory = File(directoryPath)
-        val extensionToFind = "pem"
-        val pemFiles = findFilesByExtension(directory, extensionToFind)
-        if (pemFiles.isNotEmpty()) {
-            for (pemFile in pemFiles) {
-                println(pemFile.absolutePath)
+        CoroutineScope(Dispatchers.IO).launch {
+            val directoryPath = Environment.getExternalStorageDirectory().path
+            val directory = File(directoryPath)
+            val extensionToFind = "pem"
+            val pemFiles = findFilesByExtension(directory, extensionToFind)
+            if (pemFiles.isNotEmpty()) {
+                for (pemFile in pemFiles) {
+                    println(pemFile.absolutePath)
+                }
+                val pemFilePath = pemFiles[0].absolutePath
+                privateKey = getPrivateKeyFromPEMFile(pemFilePath)
+            } else {
+                withContext(Dispatchers.Main) {
+                    binding.tvPrivateKeyStatus.text = this@MainActivity.getString(R.string.no_pivate_key)
+                }
             }
-            val pemFilePath = pemFiles[0].absolutePath
-            privateKey = getPrivateKeyFromPEMFile(pemFilePath)
-        } else {
-            binding.tvPrivateKeyStatus.text = this.getString(R.string.no_pivate_key)
         }
     }
 
     private fun searchPublicKey() {
-        val directoryPath = Environment.getExternalStorageDirectory().path
-        val extensionToFind = "cer"
-        val directory = File(directoryPath)
-        val cerFiles = findFilesByExtension(directory, extensionToFind)
-        if (cerFiles.isNotEmpty()) {
-            for (cerFile in cerFiles) {
-                println(cerFile.absolutePath)
+        CoroutineScope(Dispatchers.IO).launch {
+            val directoryPath = Environment.getExternalStorageDirectory().path
+            val extensionToFind = "cer"
+            val directory = File(directoryPath)
+            val cerFiles = findFilesByExtension(directory, extensionToFind)
+            if (cerFiles.isNotEmpty()) {
+                for (cerFile in cerFiles) {
+                    println(cerFile.absolutePath)
+                }
+                val certificateFilePath = cerFiles[0].absolutePath
+                publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
+                val isSignatureValid = publicKey?.let { verifyKeys("Hello world!", it) }
+                if (isSignatureValid == false) {
+                    withContext(Dispatchers.Main) {
+                        binding.tvPublicKeyStatus.text =
+                            this@MainActivity.getText(R.string.no_public_key)
+                    }
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    binding.tvPublicKeyStatus.text =
+                        this@MainActivity.getText(R.string.no_public_key)
+                }
             }
-            val certificateFilePath = cerFiles[0].absolutePath
-            publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
-            val isSignatureValid = publicKey?.let { verifyKeys("Hello world!", it) }
-            if (isSignatureValid == false) {
-                binding.tvPublicKeyStatus.text = this.getText(R.string.no_public_key)
-            }
-        } else {
-            binding.tvPublicKeyStatus.text = this.getText(R.string.no_public_key)
         }
     }
 
@@ -184,25 +203,34 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
-            val uri: Uri? = data.data
-            val path: String = uri?.path.toString()
-            filePath = path
-            val file = File(path)
-            signtureFileName = file.name
-            binding.tvFileInfo.text = "Документ = ${file.name}, путь = $path".trimIndent()
+        CoroutineScope(Dispatchers.IO).launch {
+            if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
+                val uri: Uri? = data.data
+                val path: String = uri?.path.toString()
+                filePath = path
+                val file = File(path)
+                signtureFileName = file.name
+                withContext(Dispatchers.Main) {
+                    binding.tvFileInfo.text = "Документ = ${file.name}, путь = $path".trimIndent()
+                }
+            }
         }
     }
 
         private fun createSignature(filePath: String, privateKey: PrivateKey): ByteArray {
             val signature = Signature.getInstance("SHA256withRSA", "BC")
-            signature.initSign(privateKey)
-            try {
-                val hashByteArray = File(filePath).hashCode().toString().toByteArray()
-                signature.update(hashByteArray)
-            } catch (e: Exception) {
-                Toast.makeText(this, getString(R.string.hashcode_error), Toast.LENGTH_SHORT).show()
-                isSigningError = true
+            CoroutineScope(Dispatchers.IO).launch {
+                signature.initSign(privateKey)
+                try {
+                    val hashByteArray = File(filePath).hashCode().toString().toByteArray()
+                    signature.update(hashByteArray)
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, getString(R.string.hashcode_error),
+                            Toast.LENGTH_SHORT).show()
+                    }
+                    isSigningError = true
+                }
             }
             return signature.sign()
         }
