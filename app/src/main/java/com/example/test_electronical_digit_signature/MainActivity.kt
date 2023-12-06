@@ -1,36 +1,41 @@
 package com.example.test_electronical_digit_signature
 
+import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
 import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jce.provider.X509CertificateObject
+import org.bouncycastle.util.io.pem.PemReader
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
+import java.io.FileReader
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Security
 import java.security.Signature
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import java.security.spec.EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
 
 
 class MainActivity : AppCompatActivity() {
+
+    private val PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 1
 
     private val TAG = "MainActivity1"
     private val PASSWORD = "1"
@@ -99,7 +104,84 @@ class MainActivity : AppCompatActivity() {
             // Получаем приватный и публичный ключи
             privateKey = keyPair.private
             publicKey= keyPair.public
+            println("Public key: $publicKey")
+            println("Private key: $privateKey")
 
+//
+            val certificateFilePath = "путь_к_вашему_файлу.cer"
+            val publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
+
+            if (publicKey != null) {
+                println("Открытый ключ: $publicKey")
+            } else {
+                println("Не удалось извлечь открытый ключ.")
+            }
+
+//            val pemFilePath = "путь_к_вашему_файлу.key"
+            val pemFilePath = "путь_к_вашему_файлу.pem"
+            val privateKey = getPrivateKeyFromPEMFile(pemFilePath)
+
+            if (privateKey != null) {
+                println("Приватный ключ: $privateKey")
+            } else {
+                println("Не удалось извлечь приватный ключ.")
+            }
+
+        if (checkSelfPermission(READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            // У вас уже есть разрешение, выполняйте операции чтения файлов
+            val directory = Environment.getExternalStorageDirectory()
+            val allFiles = findFilesByExtension(directory, extension = "txt")
+
+            if (allFiles.isNotEmpty()) {
+                println("Найденные файлы:")
+                for (file in allFiles) {
+                    println(file.absolutePath)
+                }
+            } else {
+                println("Файлы не найдены.")
+            }
+        } else {
+            // Запрашиваем разрешение у пользователя
+            requestPermissions(arrayOf(READ_EXTERNAL_STORAGE), PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
+        }
+
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
+            } else {
+                println("Разрешение на доступ к внешнему хранилищу отсутствует")
+            }
+        } else {
+            println("Доступа к внешнему хранилищу нет")
+        }
+        // Путь к корневой директории, где вы хотите начать поиск
+//        val directoryPath = Environment.getRootDirectory().path  // находит
+//        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
+//            val directoryPath = this.getExternalFilesDir(null)
+//        val directoryPath = Environment.getExternalStorageDirectory().path
+//            val directoryPath = Environment.DIRECTORY_DOWNLOADS
+        val contentValues = ContentValues().apply {
+//            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "${signtureFileName.substringBeforeLast('.')}.sig")
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+//            }
+        }
+            val extensionToFind = "txt"
+
+//            val directory = File(directoryPath)
+            val directory = this.getExternalFilesDir(null)!!
+//            val directory = getExternalFilesDirs(null)[0]
+            val pemFiles = findFilesByExtension(directory, extensionToFind)
+
+            if (pemFiles.isNotEmpty()) {
+                println("Найденные файлы с расширением $extensionToFind:")
+                for (pemFile in pemFiles) {
+                    println(pemFile.absolutePath)
+                }
+            } else {
+                println("Файлы с расширением $extensionToFind не найдены.")
+            }
         }
 //
     private fun afterShowFileChooser() {
@@ -192,6 +274,91 @@ class MainActivity : AppCompatActivity() {
             }
 
             println("файл успешно создан: ${uri.path}")
+        }
+    }
+    //
+    private fun getPublicKeyFromCertificateFile(certificateFilePath: String): PublicKey? {
+        try {
+            val pemReader = PemReader(FileReader(certificateFilePath))
+            val certHolder = pemReader.readPemObject() as X509CertificateObject
+
+            // Convert X509CertificateHolder to X509Certificate
+            val certFactory = CertificateFactory.getInstance("X.509")
+            val x509Certificate = certFactory.generateCertificate(certHolder.encoded.inputStream()) as X509Certificate
+
+            // Extract public key from X509Certificate
+            return x509Certificate.publicKey
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
+    }
+
+    fun getPrivateKeyFromPEMFile(pemFilePath: String): PrivateKey? {
+        try {
+            val pemReader = PemReader(FileReader(pemFilePath))
+            val pemObject = pemReader.readPemObject()
+
+            // Convert PEM object to PrivateKey
+            val privateKeyBytes = pemObject.content
+            // Create a PrivateKey object using the decoded private key
+            val keyFactory: KeyFactory = KeyFactory.getInstance("RSA", BouncyCastleProvider())
+            val privateKeySpec: EncodedKeySpec = X509EncodedKeySpec(privateKeyBytes)
+            val privateKey: PrivateKey = keyFactory.generatePrivate(privateKeySpec)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
+    }
+
+    private fun findFilesByExtension(directory: File, extension: String): List<File> {
+        val result = mutableListOf<File>()
+
+        if (directory.isDirectory) {
+            val files = directory.listFiles()
+            if (files != null) {
+                for (file in files) {
+                    if (file.isDirectory) {
+                        // Рекурсивно вызываем функцию для поддиректории
+                        result.addAll(findFilesByExtension(file, extension))
+//                        result.addAll(findFilesByExtension(file, file.name.substringAfterLast('.')))
+//                        println(file.name)
+                    } else {
+                        // Проверяем расширение файла
+//                        if (file.extension.equals(extension, ignoreCase = true)) {
+//                        if (file.name.substringAfterLast('.').equals(extension, ignoreCase = true)) {
+//                        if (file.name.contains(".txt", ignoreCase = true)) {
+                            result.add(file)
+//                            println(file.name)
+//                        }
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Разрешение получено, выполняйте операции чтения файлов
+                    val directory = Environment.getExternalStorageDirectory()
+                    val allFiles = findFilesByExtension(directory, extension = "txt")
+
+                    if (allFiles.isNotEmpty()) {
+                        println("Найденные файлы:")
+                        for (file in allFiles) {
+                            println(file.absolutePath)
+                        }
+                    } else {
+                        println("Файлы не найдены.")
+                    }
+                } else {
+                    println("Разрешение не получено, обработайте ситуацию")
+                }
+            }
         }
     }
 }
