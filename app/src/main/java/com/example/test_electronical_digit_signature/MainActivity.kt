@@ -126,62 +126,56 @@ class MainActivity : AppCompatActivity() {
             } else {
                 println("Не удалось извлечь приватный ключ.")
             }
-
-        if (checkSelfPermission(READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            // У вас уже есть разрешение, выполняйте операции чтения файлов
-            val directory = Environment.getExternalStorageDirectory()
-            val allFiles = findFilesByExtension(directory, extension = "txt")
-
-            if (allFiles.isNotEmpty()) {
-                println("Найденные файлы:")
-                for (file in allFiles) {
-                    println(file.absolutePath)
-                }
-            } else {
-                println("Файлы не найдены.")
-            }
-        } else {
+//
+//        if (checkSelfPermission(READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+//            // У вас уже есть разрешение, выполняйте операции чтения файлов
+//            val directory = Environment.getExternalStorageDirectory()
+//            val allFiles = findFilesByExtension(directory, extension = "txt")
+//
+//            if (allFiles.isNotEmpty()) {
+//                println("Найденные файлы:")
+//                for (file in allFiles) {
+//                    println(file.absolutePath)
+//                }
+//            } else {
+//                println("Файлы не найдены.")
+//            }
+//        } else {
             // Запрашиваем разрешение у пользователя
             requestPermissions(arrayOf(READ_EXTERNAL_STORAGE), PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
-        }
+//        }
 
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
-            } else {
-                println("Разрешение на доступ к внешнему хранилищу отсутствует")
-            }
-        } else {
-            println("Доступа к внешнему хранилищу нет")
-        }
-        // Путь к корневой директории, где вы хотите начать поиск
-//        val directoryPath = Environment.getRootDirectory().path  // находит
-//        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
-//            val directoryPath = this.getExternalFilesDir(null)
-//        val directoryPath = Environment.getExternalStorageDirectory().path
-//            val directoryPath = Environment.DIRECTORY_DOWNLOADS
-        val contentValues = ContentValues().apply {
-//            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "${signtureFileName.substringBeforeLast('.')}.sig")
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+//        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+//            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+//                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
+//            } else {
+//                println("Разрешение на доступ к внешнему хранилищу отсутствует")
 //            }
-        }
-            val extensionToFind = "txt"
-
+//        } else {
+//            println("Доступа к внешнему хранилищу нет")
+//        }
+//        // Путь к корневой директории, где вы хотите начать поиск
+////        val directoryPath = Environment.getRootDirectory().path  // находит
+////        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
+////            val directoryPath = this.getExternalFilesDir(null)
+////        val directoryPath = Environment.getExternalStorageDirectory().path
+//            val directoryPath = Environment.DIRECTORY_DOWNLOADS
+//
+//            val extensionToFind = "txt"
+//
 //            val directory = File(directoryPath)
-            val directory = this.getExternalFilesDir(null)!!
-//            val directory = getExternalFilesDirs(null)[0]
-            val pemFiles = findFilesByExtension(directory, extensionToFind)
-
-            if (pemFiles.isNotEmpty()) {
-                println("Найденные файлы с расширением $extensionToFind:")
-                for (pemFile in pemFiles) {
-                    println(pemFile.absolutePath)
-                }
-            } else {
-                println("Файлы с расширением $extensionToFind не найдены.")
-            }
+////            val directory = this.getExternalFilesDir(null)!!
+////            val directory = getExternalFilesDirs(null)[0]
+//            val pemFiles = findFilesByExtension(directory, extensionToFind)
+//
+//            if (pemFiles.isNotEmpty()) {
+//                println("Найденные файлы с расширением $extensionToFind:")
+//                for (pemFile in pemFiles) {
+//                    println(pemFile.absolutePath)
+//                }
+//            } else {
+//                println("Файлы с расширением $extensionToFind не найдены.")
+//            }
         }
 //
     private fun afterShowFileChooser() {
@@ -201,6 +195,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showFileChooser(): String {
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
+            } else {
+                println("Разрешение на доступ к внешнему хранилищу отсутствует")
+            }
+        } else {
+            println("Доступа к внешнему хранилищу нет")
+        }
+        // Путь к корневой директории, где вы хотите начать поиск
+//        val directoryPath = Environment.getRootDirectory().path  // находит
+//        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
+//            val directoryPath = this.getExternalFilesDir(null)
+//        val directoryPath = Environment.getExternalStorageDirectory().path
+        val directoryPath = Environment.DIRECTORY_DOWNLOADS
+
+        val extensionToFind = "txt"
+
+//        val directory = File(directoryPath)
+//            val directory = this.getExternalFilesDir(null)!!
+            val directory = getExternalFilesDirs(null)[0]
+        val pemFiles = findFilesByExtension(directory, extensionToFind)
+
+        if (pemFiles.isNotEmpty()) {
+            println("Найденные файлы с расширением $extensionToFind:")
+            for (pemFile in pemFiles) {
+                println(pemFile.absolutePath)
+            }
+        } else {
+            println("Файлы с расширением $extensionToFind не найдены.")
+        }
+        //
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
         intent.addCategory(Intent.CATEGORY_OPENABLE)
@@ -338,27 +364,27 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // Разрешение получено, выполняйте операции чтения файлов
-                    val directory = Environment.getExternalStorageDirectory()
-                    val allFiles = findFilesByExtension(directory, extension = "txt")
-
-                    if (allFiles.isNotEmpty()) {
-                        println("Найденные файлы:")
-                        for (file in allFiles) {
-                            println(file.absolutePath)
-                        }
-                    } else {
-                        println("Файлы не найдены.")
-                    }
-                } else {
-                    println("Разрешение не получено, обработайте ситуацию")
-                }
-            }
-        }
-    }
+//    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//        when (requestCode) {
+//            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
+//                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                    // Разрешение получено, выполняйте операции чтения файлов
+//                    val directory = Environment.getExternalStorageDirectory()
+//                    val allFiles = findFilesByExtension(directory, extension = "txt")
+//
+//                    if (allFiles.isNotEmpty()) {
+//                        println("Найденные файлы:")
+//                        for (file in allFiles) {
+//                            println(file.absolutePath)
+//                        }
+//                    } else {
+//                        println("Файлы не найдены.")
+//                    }
+//                } else {
+//                    println("Разрешение не получено, обработайте ситуацию")
+//                }
+//            }
+//        }
+//    }
 }
