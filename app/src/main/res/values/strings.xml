@@ -6,4 +6,8 @@
     <string name="btn_sign">Подписать</string>
     <string name="no_public_key">"Отсутствует публичный ключ ЭЦП. Убедитесь, что он установлен на вашем устройстве и соответствует закрытому ключу ЭЦП."</string>
     <string name="no_pivate_key">"Отсутствует закрытый ключ ЭЦП. Убедитесь, что он установлен на вашем устройстве."</string>
+    <string name="signing_error">Ошибка подписания документа</string>
+    <string name="success_signing">Подписание документа завершено успешно</string>
+    <string name="no_access_to_storage">Для продолжения работы необходим доступ к файлам на устройстве.</string>
+    <string name="hashcode_error">Ошибка кодирования хэш-кода</string>
 </resources>
