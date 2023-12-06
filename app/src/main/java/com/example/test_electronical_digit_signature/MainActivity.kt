@@ -137,6 +137,7 @@ class MainActivity : AppCompatActivity() {
             val path: String = uri?.path.toString()
             filePath = path
             val file = File(path)
+            signtureFileName = file.name
             binding.tvFileInfo.text = "fileName = ${file.name}, path = $path".trimIndent()
         }
     }
@@ -173,9 +174,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun createFile(context: Context, fileName: String, signature: ByteArray) {
         val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-//            put(MediaStore.MediaColumns.MIME_TYPE, "sig")
+//            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "${signtureFileName.substringBeforeLast('.')}.sig")
 //            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
 //            }
