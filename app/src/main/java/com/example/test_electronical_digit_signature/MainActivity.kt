@@ -12,8 +12,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.core.widget.doOnTextChanged
 import com.example.test_electronical_digit_signature.databinding.ActivityMainBinding
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -21,10 +21,7 @@ import org.bouncycastle.jce.provider.X509CertificateObject
 import org.bouncycastle.util.io.pem.PemReader
 import java.io.File
 import java.io.FileReader
-import java.nio.file.Files
 import java.security.KeyFactory
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Security
@@ -46,8 +43,8 @@ class MainActivity : AppCompatActivity() {
     private var signtureFileName = "noDocument_signature"
     private var filePath = ""
     private var isSigningError = false
-    private lateinit var privateKey: PrivateKey
-    private lateinit var publicKey: PublicKey
+    private var privateKey: PrivateKey? = null
+    private var publicKey: PublicKey? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,17 +62,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnSign.setOnClickListener {
-            if ( (filePath != "") && (binding.etPassword.text.toString() == PASSWORD) ) {
-                isSigningError = false
-                afterShowFileChooser()
-            } else {
-                isSigningError = true
-            }
+            if (privateKey != null && publicKey != null) {
+                if ((filePath != "") && (binding.etPassword.text.toString() == PASSWORD)) {
+                    isSigningError = false
+                    afterShowFileChooser()
+                } else {
+                    isSigningError = true
+                }
 
-            if (isSigningError) {
-                binding.tvSignStatus.text = "Ошибка подписания документа"
-            } else {
-                binding.tvSignStatus.text = "Подписание документа завершено успешно"
+                if (isSigningError) {
+                    binding.tvSignStatus.text = "Ошибка подписания документа"
+                } else {
+                    binding.tvSignStatus.text = "Подписание документа завершено успешно"
+                }
             }
         }
 
@@ -85,118 +84,45 @@ class MainActivity : AppCompatActivity() {
 
 //
         val provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME)
-        // Android registers its own BC provider. As it might be outdated and might not include
-        // all needed ciphers, we substitute it with a known BC bundled in the app.
-        // Android's BC has its package rewritten to "com.android.org.bouncycastle" and because
-        // of that it's possible to have another BC implementation loaded in VM.
-        // Android registers its own BC provider. As it might be outdated and might not include
-        // all needed ciphers, we substitute it with a known BC bundled in the app.
-        // Android's BC has its package rewritten to "com.android.org.bouncycastle" and because
-        // of that it's possible to have another BC implementation loaded in VM.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.insertProviderAt(BouncyCastleProvider(), 0)
-//
-            // Создаем генератор ключевой пары с использованием алгоритма, например, RSA
-            val keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC")
-            keyPairGenerator.initialize(2048) // Укажите требуемую длину ключа
+        Security.removeProvider(provider.name)
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
 
-            // Генерируем ключевую пару
-            val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
-
-            // Получаем приватный и публичный ключи
-            privateKey = keyPair.private
-            publicKey= keyPair.public
-            println("Public key: $publicKey")
-            println("Private key: $privateKey")
-
-//
-            val certificateFilePath = "путь_к_вашему_файлу.cer"
-            val publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
-
-            if (publicKey != null) {
-                println("Открытый ключ: $publicKey")
-            } else {
-                println("Не удалось извлечь открытый ключ.")
-            }
-
-//            val pemFilePath = "путь_к_вашему_файлу.key"
-            val pemFilePath = "путь_к_вашему_файлу.pem"
-            val privateKey = getPrivateKeyFromPEMFile(pemFilePath)
-
-            if (privateKey != null) {
-                println("Приватный ключ: $privateKey")
-            } else {
-                println("Не удалось извлечь приватный ключ.")
-            }
-//
-//        if (checkSelfPermission(READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-//            // У вас уже есть разрешение, выполняйте операции чтения файлов
-//            val directory = Environment.getExternalStorageDirectory()
-//            val allFiles = findFilesByExtension(directory, extension = "txt")
-//
-//            if (allFiles.isNotEmpty()) {
-//                println("Найденные файлы:")
-//                for (file in allFiles) {
-//                    println(file.absolutePath)
-//                }
-//            } else {
-//                println("Файлы не найдены.")
-//            }
-//        } else {
+        if (checkSelfPermission(READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            println(
+                "checkSelfPermission(READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED = " +
+                        "${checkSelfPermission(READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED}"
+            )
             // Запрашиваем разрешение у пользователя
-            requestPermissions(arrayOf(READ_EXTERNAL_STORAGE), PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
-//        }
-
-//        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-//            if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-//                println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
-//            } else {
-//                println("Разрешение на доступ к внешнему хранилищу отсутствует")
-//            }
-//        } else {
-//            println("Доступа к внешнему хранилищу нет")
-//        }
-//        // Путь к корневой директории, где вы хотите начать поиск
-////        val directoryPath = Environment.getRootDirectory().path  // находит
-////        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
-////            val directoryPath = this.getExternalFilesDir(null)
-////        val directoryPath = Environment.getExternalStorageDirectory().path
-//            val directoryPath = Environment.DIRECTORY_DOWNLOADS
-//
-//            val extensionToFind = "txt"
-//
-//            val directory = File(directoryPath)
-////            val directory = this.getExternalFilesDir(null)!!
-////            val directory = getExternalFilesDirs(null)[0]
-//            val pemFiles = findFilesByExtension(directory, extensionToFind)
-//
-//            if (pemFiles.isNotEmpty()) {
-//                println("Найденные файлы с расширением $extensionToFind:")
-//                for (pemFile in pemFiles) {
-//                    println(pemFile.absolutePath)
-//                }
-//            } else {
-//                println("Файлы с расширением $extensionToFind не найдены.")
-//            }
+            requestPermissions(
+                arrayOf(READ_EXTERNAL_STORAGE),
+                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE)
         }
+    }
 //
     private fun afterShowFileChooser() {
         // Создаем подпись
-        val signature = createSignature(filePath, privateKey)
-        println("signature1 = ${signature.contentToString()}")
-        // Сохраняем подпись в файл
-        createFile(this@MainActivity, signtureFileName, signature)
+        privateKey?.let{
+            publicKey?.let {
+                val signature = createSignature(filePath, privateKey!!)
+                println("signature1 = ${signature.contentToString()}")
+                // Сохраняем подпись в файл
+                createFile(this@MainActivity, signtureFileName, signature)
 
-        // Проверяем подпись
-        val isSignatureValid = verifySignature(filePath, publicKey, signature)
-        if (isSignatureValid) {
-            println("Подпись верна.")
-        } else {
-            println("Подпись не верна.")
+                // Проверяем подпись
+                val isSignatureValid = verifySignature(filePath, publicKey!!, signature)
+                if (isSignatureValid) {
+                    println("Подпись верна.")
+                } else {
+                    println("Подпись не верна.")
+                }
+            }
+
         }
     }
 
     private fun showFileChooser(): String {
+        binding.tvPublicKeyStatus.text = ""
+        binding.tvPrivateKeyStatus.text = ""
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             if (ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 println("Доступ к внешнему хранилищу и разрешение на доступ к нему есть")
@@ -206,89 +132,49 @@ class MainActivity : AppCompatActivity() {
         } else {
             println("Доступа к внешнему хранилищу нет")
         }
-        // Путь к корневой директории, где вы хотите начать поиск
-//        val directoryPath = Environment.getRootDirectory().path  // находит
-//        val directoryPath = getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS)
-//            val directoryPath = this.getExternalFilesDir(null)
-//        val directoryPath = Environment.getExternalStorageDirectory().path
-        val directoryPath = Environment.DIRECTORY_DOWNLOADS
-
-        val extensionToFind = "txt"
-
-//        val directory = File(directoryPath)
-//            val directory = this.getExternalFilesDir(null)!!
-            val directory = getExternalFilesDirs(null)[0]
-        val pemFiles = findFilesByExtension(directory, extensionToFind)
-
-        if (pemFiles.isNotEmpty()) {
+        // Путь к корневой директории, где вы хотите начать поиск публичного ключа
+        val directoryPath = Environment.getExternalStorageDirectory().path
+        var extensionToFind = "cer"
+        val directory = File(directoryPath)
+        val cerFiles = findFilesByExtension(directory, extensionToFind)
+        if (cerFiles.isNotEmpty()) {
             println("Найденные файлы с расширением $extensionToFind:")
-            for (pemFile in pemFiles) {
-                println(pemFile.absolutePath)
+            for (cerFile in cerFiles) {
+                println(cerFile.absolutePath)
             }
+            val certificateFilePath = cerFiles[0].absolutePath
+            publicKey = getPublicKeyFromCertificateFile(certificateFilePath)
+            println("Открытый ключ: $publicKey")
         } else {
             println("Файлы с расширением $extensionToFind не найдены.")
-        }
-        //
-        val result = mutableListOf<File>()
-
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.MIME_TYPE
-        )
-
-        val uri = MediaStore.Files.getContentUri("external")
-
-        val cursor = contentResolver.query(
-            uri,
-            projection,
-            null,
-            null,
-            null
-        )
-
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                val path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
-                val mimeType = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
-                val file = File(path)
-
-                // Добавляем все файлы без проверки расширения
-                result.add(file)
-                if (file.name.contains(".sig"))
-                    println(file.name)
+            println("Не удалось извлечь открытый ключ.")
+            binding.tvPublicKeyStatus.text = buildString {
+                append("Отсутствует публичный ключ ЭЦП. Убедитесь, что он установлен ")
+                append("на вашем устройстве и соответствует закрытому ключу ЭЦП.")
             }
-            cursor.close()
         }
-//        return result
-        //
-//        val projection = arrayOf(
-//            MediaStore.Files.FileColumns.DATA,
-//            MediaStore.Files.FileColumns.MIME_TYPE
-//        )
+            // Поиск приватного ключа
+            extensionToFind = "pem"
+            val pemFiles = findFilesByExtension(directory, extensionToFind)
+            val pemFilePath = "путь_к_вашему_файлу.pem"
+            privateKey = getPrivateKeyFromPEMFile(pemFilePath)
+            if (pemFiles.isNotEmpty()) {
+                println("Найденные файлы с расширением $extensionToFind:")
+                for (pemFile in pemFiles) {
+                    println(pemFile.absolutePath)
+                }
+                val pemFilePath = pemFiles[0].absolutePath
+                privateKey = getPrivateKeyFromPEMFile(pemFilePath)
+                println("Закрытый ключ: $privateKey")
+            } else {
+                println("Файлы с расширением $extensionToFind не найдены.")
+                println("Не удалось извлечь закрытый ключ.")
+                binding.tvPrivateKeyStatus.text = buildString {
+                    append("Отсутствует закрытый ключ ЭЦП.")
+                    append(" Убедитесь, что он установлен на вашем устройстве.")
+                }
+            }
 //
-//        val uri = MediaStore.Files.getContentUri("external")
-//
-//        val cursor = contentResolver.query(
-//            uri,
-//            projection,
-//            null,
-//            null,
-//            null
-//        )
-//
-//        if (cursor != null) {
-//            while (cursor.moveToNext()) {
-//                val path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
-//                if (path.contains(".mp3")) {
-//                    println("Found file: $path")
-//                } else {
-//                    println("Not found in $path")
-//                }
-//            }
-//            cursor.close()
-//        }
-
-        //
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
         intent.addCategory(Intent.CATEGORY_OPENABLE)
@@ -378,8 +264,8 @@ class MainActivity : AppCompatActivity() {
             return x509Certificate.publicKey
         } catch (e: Exception) {
             e.printStackTrace()
+            return null
         }
-        return null
     }
 
     fun getPrivateKeyFromPEMFile(pemFilePath: String): PrivateKey? {
@@ -392,11 +278,11 @@ class MainActivity : AppCompatActivity() {
             // Create a PrivateKey object using the decoded private key
             val keyFactory: KeyFactory = KeyFactory.getInstance("RSA", BouncyCastleProvider())
             val privateKeySpec: EncodedKeySpec = X509EncodedKeySpec(privateKeyBytes)
-            val privateKey: PrivateKey = keyFactory.generatePrivate(privateKeySpec)
+            return keyFactory.generatePrivate(privateKeySpec)
         } catch (e: Exception) {
             e.printStackTrace()
+            return null
         }
-        return null
     }
 
     private fun findFilesByExtension(directory: File, extension: String): List<File> {
@@ -426,27 +312,17 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-//    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-//        when (requestCode) {
-//            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
-//                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                    // Разрешение получено, выполняйте операции чтения файлов
-//                    val directory = Environment.getExternalStorageDirectory()
-//                    val allFiles = findFilesByExtension(directory, extension = "txt")
-//
-//                    if (allFiles.isNotEmpty()) {
-//                        println("Найденные файлы:")
-//                        for (file in allFiles) {
-//                            println(file.absolutePath)
-//                        }
-//                    } else {
-//                        println("Файлы не найдены.")
-//                    }
-//                } else {
-//                    println("Разрешение не получено, обработайте ситуацию")
-//                }
-//            }
-//        }
-//    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    println("Разрешение получено")
+                } else {
+                    println("Разрешение не получено")
+                    binding.tvSignStatus.text = "Для продолжения работы необходим доступ к файлам на устройстве."
+                }
+            }
+        }
+    }
 }
